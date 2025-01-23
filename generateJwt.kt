@@ -1,17 +1,12 @@
-import java.security.spec.PKCS8EncodedKeySpec
-import java.security.KeyFactory
-import java.util.Base64
+import com.auth0.jwt.JWT
+import com.auth0.jwt.algorithms.Algorithm
 import java.util.Date
-import io.jsonwebtoken.Jwts
-import io.jsonwebtoken.SignatureAlgorithm
 
-fun generateJwt(appId: String, privateKey: String): String {
-    val pkcs8KeySpec = PKCS8EncodedKeySpec(Base64.getDecoder().decode(privateKey))
-    val key = KeyFactory.getInstance("RSA").generatePrivate(pkcs8KeySpec)
-    return Jwts.builder()
-        .setIssuer(appId)
-        .setIssuedAt(Date())
-        .setExpiration(Date(System.currentTimeMillis() + 600_000)) // 10 minutes
-        .signWith(SignatureAlgorithm.RS256, key)
-        .compact()
+fun generateJwtWithAuth0(appId: String, privateKey: String): String {
+    val algorithm = Algorithm.RSA256(null, privateKey.toByteArray())
+    return JWT.create()
+        .withIssuer(appId)
+        .withIssuedAt(Date())
+        .withExpiresAt(Date(System.currentTimeMillis() + 600_000)) // 10 minutes
+        .sign(algorithm)
 }
