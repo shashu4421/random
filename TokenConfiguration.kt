@@ -4,6 +4,11 @@ import org.springframework.context.annotation.Configuration
 import java.nio.file.Files
 import java.nio.file.Paths
 
+import java.security.KeyFactory
+import java.security.PrivateKey
+import java.security.spec.PKCS8EncodedKeySpec
+import java.util.Base64
+
 @Configuration
 class TokenConfiguration {
 
@@ -48,4 +53,20 @@ class TokenConfiguration {
 
         return response?.get("token") as String
     }
+
+fun String.toPrivateKey(): PrivateKey {
+    // Remove PEM headers and newlines
+    val privateKeyContent = this
+        .replace("-----BEGIN PRIVATE KEY-----", "")
+        .replace("-----END PRIVATE KEY-----", "")
+        .replace("\\s".toRegex(), "")
+
+    // Decode Base64
+    val keyBytes = Base64.getDecoder().decode(privateKeyContent)
+
+    // Convert to PrivateKey object
+    val keySpec = PKCS8EncodedKeySpec(keyBytes)
+    val keyFactory = KeyFactory.getInstance("RSA") // Replace "RSA" with the correct algorithm if needed
+    return keyFactory.generatePrivate(keySpec)
+}
 }
