@@ -1,0 +1,20 @@
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-antrun-plugin</artifactId>
+    <version>3.0.0</version>
+    <executions>
+        <execution>
+            <id>copy-local-file</id>
+            <phase>process-resources</phase>
+            <configuration>
+                <target>
+                    <copy file="path/to/local/file.txt"
+                          todir="${project.build.directory}/download" />
+                </target>
+            </configuration>
+            <goals>
+                <goal>run</goal>
+            </goals>
+        </execution>
+    </executions>
+</plugin>
