@@ -25,6 +25,15 @@ val diffExprs = dataCols.map { colName =>
     .otherwise(null)
 }
 
+val dfDiff = dfJoined
+  .withColumn("Difference", when(
+    trim(lower(col("df1.status"))) =!= trim(lower(col("df2.status"))) ||
+    col("df1.status").isNull =!= col("df2.status").isNull,
+    concat(lit("status: "), coalesce(col("df1.status"), lit("NULL")), lit(" → "), coalesce(col("df2.status"), lit("NULL")))
+  ).otherwise(null))
+  .filter(col("Difference").isNotNull)
+  .select("orderId", "Difference")
+
 // Concatenate differences into a single column
 val dfDiff = dfJoined.withColumn("Differences", array_remove(array(diffExprs: _*), null))
   .filter(size(col("Differences")) > 0) // Keep only rows with differences
