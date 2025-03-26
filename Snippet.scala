@@ -103,6 +103,18 @@ val dfNormalized = df.withColumn(
     .otherwise(col("Production"))
 )
 
+import java.text.Normalizer
+
+val normalizeText = udf((s: String) => {
+  if (s == null) null
+  else Normalizer.normalize(s.trim.replaceAll("\\s+", " "), Normalizer.Form.NFKC)
+})
+
+df.withColumn("Production_Normalized", normalizeText(col("Production")))
+  .withColumn("UAT_Normalized", normalizeText(col("UAT")))
+  .show(false)
+
+
 // Compare after normalization
 val dfFinal = dfNormalized.withColumn("isEqual",
   col("Production_Normalized") === col("UAT_Normalized")
