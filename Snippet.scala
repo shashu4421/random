@@ -80,6 +80,34 @@ val dfFinal = dfNormalized.withColumn("isEqual",
   col("Production_Normalized") === col("UAT_Normalized")
 )
 
+
+dfFinal.show(false)
+
+
+
+
+import org.apache.spark.sql.functions._
+
+val removeTrailingZeros = udf((value: String) => {
+  if (value == null) null
+  else value.split("\\|").map(_.replaceAll("\\.000000$", "")).mkString("|")
+})
+
+val dfNormalized = df.withColumn(
+  "UAT_Normalized",
+  when(col("Column") === "legDetails", removeTrailingZeros(col("UAT")))
+    .otherwise(col("UAT"))
+).withColumn(
+  "Production_Normalized",
+  when(col("Column") === "legDetails", removeTrailingZeros(col("Production")))
+    .otherwise(col("Production"))
+)
+
+// Compare after normalization
+val dfFinal = dfNormalized.withColumn("isEqual",
+  col("Production_Normalized") === col("UAT_Normalized")
+)
+
 dfFinal.show(false)
 
 
