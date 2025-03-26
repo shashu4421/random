@@ -61,3 +61,26 @@ val dfFinal = dfNormalized.withColumn("isEqual",
 dfFinal.show(false)
 
 
+import org.apache.spark.sql.functions._
+
+val dfNormalized = df.withColumn(
+  "UAT_Normalized",
+  when(col("Column") === "legDetails",
+       regexp_replace(col("UAT"), "\\.000000$", "") // Remove ".000000" only when it appears at the end
+  ).otherwise(col("UAT"))
+).withColumn(
+  "Production_Normalized",
+  when(col("Column") === "legDetails",
+       regexp_replace(col("Production"), "\\.000000$", "")
+  ).otherwise(col("Production"))
+)
+
+// Compare after normalization
+val dfFinal = dfNormalized.withColumn("isEqual",
+  col("Production_Normalized") === col("UAT_Normalized")
+)
+
+dfFinal.show(false)
+
+
+
