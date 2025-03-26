@@ -37,3 +37,27 @@ val dfFinal = dfNormalized.withColumn("isEqual",
 )
 
 dfFinal.show(false)
+
+
+import org.apache.spark.sql.functions._
+
+val dfNormalized = df.withColumn(
+  "UAT_Normalized",
+  when(col("Column") === "legDetails",
+       regexp_replace(col("UAT").cast("decimal(20,6)"), "(\\.0+)$", "") // Ensure proper type handling
+  ).otherwise(col("UAT"))
+).withColumn(
+  "Production_Normalized",
+  when(col("Column") === "legDetails",
+       regexp_replace(col("Production").cast("decimal(20,6)"), "(\\.0+)$", "")
+  ).otherwise(col("Production"))
+)
+
+// Compare after normalization
+val dfFinal = dfNormalized.withColumn("isEqual",
+  col("Production_Normalized") === col("UAT_Normalized")
+)
+
+dfFinal.show(false)
+
+
