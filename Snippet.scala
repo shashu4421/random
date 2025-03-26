@@ -111,4 +111,12 @@ val dfFinal = dfNormalized.withColumn("isEqual",
 dfFinal.show(false)
 
 
+val toAscii = udf((s: String) => s.replaceAll("[^\\x00-\\x7F]", ""))
+
+df.withColumn("Production_ASCII", toAscii(col("Production")))
+  .withColumn("UAT_ASCII", toAscii(col("UAT")))
+  .show(false)
+
+
+
 
