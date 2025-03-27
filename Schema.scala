@@ -30,3 +30,22 @@ val df = spark.read
 
 df.show(false) // Print full rows
 
+
+
+import org.apache.spark.sql.{SparkSession, DataFrame}
+import scala.util.Try
+
+val spark = SparkSession.builder().appName("LoadIfExists").getOrCreate()
+
+def loadIfExists(path: String): DataFrame = {
+  Try(spark.read.option("header", "true").csv(path)).getOrElse {
+    println(s"Path does not exist: $path, returning empty DataFrame")
+    spark.emptyDataFrame
+  }
+}
+
+// Example Usage
+val df = loadIfExists("path/to/file.csv")
+df.show()
+
+
