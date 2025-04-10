@@ -1,31 +1,19 @@
-import scala.collection.mutable
+import org.apache.spark.sql.functions._
+import spark.implicits._
 
-// Parse A into a Map[eventName -> List(fieldNames)]
-val schemaMap: Map[String, List[(String, String)]] = dfA
-  .collect()
-  .map { row =>
-    val eventName = row.getAs[String]("eventName")
-    val json = row.getAs[String]("fields")
-    val parsed = spark.read.json(Seq(json).toDS)
-    val nameTypeList = parsed.select($"name", $"jsonDatatype").as[(String, String)].collect().toList
-    (eventName, nameTypeList)
-  }.toMap
+// Step 1: Join on _c3 and eventName
+val joinedDF = dfData.join(dfFields, dfData("_c3") === dfFields("eventName"))
 
+// Step 2: Combine _c0 to _c2 into array of values
+val withValuesArray = joinedDF.withColumn("values", array($"_c0", $"_c1", $"_c2"))
 
+// Step 3: Zip fields with values => create a Map
+val withZipped = withValuesArray.withColumn("zipped", map_from_arrays($"fields", $"values"))
 
-// Step 2: Define schema of fields column (which is a JSON array of structs)
-val fieldArraySchema = ArrayType(StructType(Seq(
-  StructField("name", StringType),
-  StructField("jsonDatatype", StringType)
-)))
+// Optional: Explode map into columns
+val finalDF = withZipped.select(
+  $"_c3".alias("eventName"),
+  $"zipped.*" // this will expand keys as column names
+)
 
-// Step 3: Parse the JSON string column "fields" to Array of Structs
-val dfParsed = df.withColumn("parsedFields", from_json(col("fields"), fieldArraySchema))
-
-// Step 4: Extract just the "name" from each field
-val dfFinal = dfParsed
-  .withColumn("fields", expr("transform(parsedFields, x -> x.name)"))
-  .select("eventName", "fields")
-
-// Show result
-dfFinal.show(false)
+finalDF.show(false)
