@@ -1,13 +1,20 @@
-// Extract the first row (assuming fields are in the last column)
-val fieldsRow = df.select("fields").as[Seq[String]].head
+import org.apache.spark.sql.functions._
 
-// Create a list of current column names (_c0, _c1, ...)
-val oldColumns = df.columns.filter(_.startsWith("_c"))
+// Join both DataFrames where _c3 == eventName
+val joinedDF = dfData.join(dfSchema, dfData("_c3") === dfSchema("eventName"))
 
-// Map old column names to new ones from fields
-val renamedCols = oldColumns.zip(fieldsRow).map {
-  case (oldName, newName) => col(oldName).as(newName)
-}
+// Extract _c columns (you can make this dynamic based on how many _c columns you expect)
+val dataCols = dfData.columns.filter(_.startsWith("_c")).sorted  // ensure order like _c0, _c1,...
 
-// Apply renaming
-val dfRenamed = df.select(renamedCols: _*)
+// UDF to zip column names with values and return as struct
+val zipColsUDF = udf((values: Seq[String], names: Seq[String]) => {
+  names.zip(values).toMap
+})
+
+// Convert row to array of values
+val dfWithArray = joinedDF.withColumn("zipped", zipColsUDF(array(dataCols.map(col): _*), col("fields")))
+
+// Explode the map back into columns
+val renamedDF = dfWithArray.select(
+  dfWithArray("zipped").as("z")
+).selectExpr("z.*")
