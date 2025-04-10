@@ -1,19 +1,13 @@
-import org.apache.spark.sql.functions._
-import spark.implicits._
+// Extract the first row (assuming fields are in the last column)
+val fieldsRow = df.select("fields").as[Seq[String]].head
 
-// Step 1: Join on _c3 and eventName
-val joinedDF = dfData.join(dfFields, dfData("_c3") === dfFields("eventName"))
+// Create a list of current column names (_c0, _c1, ...)
+val oldColumns = df.columns.filter(_.startsWith("_c"))
 
-// Step 2: Combine _c0 to _c2 into array of values
-val withValuesArray = joinedDF.withColumn("values", array($"_c0", $"_c1", $"_c2"))
+// Map old column names to new ones from fields
+val renamedCols = oldColumns.zip(fieldsRow).map {
+  case (oldName, newName) => col(oldName).as(newName)
+}
 
-// Step 3: Zip fields with values => create a Map
-val withZipped = withValuesArray.withColumn("zipped", map_from_arrays($"fields", $"values"))
-
-// Optional: Explode map into columns
-val finalDF = withZipped.select(
-  $"_c3".alias("eventName"),
-  $"zipped.*" // this will expand keys as column names
-)
-
-finalDF.show(false)
+// Apply renaming
+val dfRenamed = df.select(renamedCols: _*)
