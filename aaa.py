@@ -1,22 +1,30 @@
-import os
+from py4j.java_gateway import java_import
 import tarfile
+import os
 
-# Set paths
-remote_path = "abfss://<container>@<account>.dfs.core.windows.net/path/to/yourfile.tar"
+# Set up paths
+adls_path = "abfss://<container>@<storageaccount>.dfs.core.windows.net/path/to/file.tar"
 local_tar_path = "/tmp/archive.tar"
 extract_path = "/tmp/extracted"
 
-# Create local extract dir
+# Create extract folder
 os.makedirs(extract_path, exist_ok=True)
 
-# Copy file from ADLS to local /tmp (works in Synapse)
-spark.conf.set("fs.azure.account.key.<account>.dfs.core.windows.net", "<your_key_if_needed>")
-dbutils.fs.cp(remote_path, f"file:{local_tar_path}")  # Make sure this step succeeds!
+# Use Hadoop FileSystem API to copy the .tar file locally
+java_import(sc._gateway.jvm, "org.apache.hadoop.fs.FileSystem")
+java_import(sc._gateway.jvm, "org.apache.hadoop.fs.Path")
 
-# ✅ Check if the file exists before opening
+fs = sc._jvm.FileSystem.get(sc._jsc.hadoopConfiguration())
+src_path = sc._jvm.Path(adls_path)
+dst_path = sc._jvm.Path(f"file:{local_tar_path}")
+
+fs.copyToLocalFile(src_path, dst_path)
+
+
+# Now extract the contents
 if os.path.exists(local_tar_path):
     with tarfile.open(local_tar_path, "r") as tar:
         tar.extractall(path=extract_path)
-    print("✅ Extraction done")
+    print("✅ Extraction completed.")
 else:
-    print("❌ Tar file not found at", local_tar_path)
+    print("❌ File not found:", local_tar_path)
