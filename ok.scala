@@ -1,14 +1,23 @@
-val dataCols = joined.columns.filter(_.startsWith("_c")).sorted
+# Define your path
+tar_path = "abfss://<container>@<storage-account>.dfs.core.windows.net/path/to/yourfile.tar"
+local_tar_path = "/tmp/archive.tar"
 
-val zipColsUDF = udf((values: Seq[String], names: Seq[String]) => {
-  names.zip(values).toMap
-})
+# Copy tar to Spark driver local disk
+dbutils.fs.cp(tar_path, f"file:{local_tar_path}")
 
-val dfWithArray = joined.withColumn("zippedMap", zipColsUDF(array(dataCols.map(col): _*), col("fields")))
+import tarfile
+import os
 
-val fieldsExample = joined.select("fields").as[Seq[String]].head
-val structExpr = fieldsExample.map(f => s"zippedMap['$f'] as `$f`")
+extract_path = "/tmp/untarred/"
+os.makedirs(extract_path, exist_ok=True)
 
-val renamedDF = dfWithArray.selectExpr(structExpr: _*)
+# Extract files
+with tarfile.open(local_tar_path, "r") as tar:
+    tar.extractall(path=extract_path)
 
-renamedDF.show(false)
+# Upload files back to ADLS
+extracted_files = os.listdir(extract_path)
+for filename in extracted_files:
+    src = f"file:{extract_path}/{filename}"
+    dest = f"abfss://<container>@<storage-account>.dfs.core.windows.net/extracted/{filename}"
+    dbutils.fs.cp(src, dest)
