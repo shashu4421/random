@@ -38,7 +38,7 @@ def generateDiff(prodDF: DataFrame, devDF: DataFrame, eventType: String)(implici
 
   // Step 4: Create a new DataFrame with only changed columns per row
   val result = changedOnly.map { row =>
-    val keyCols = Seq("diff") ++ row.schema.fieldNames.filterNot(_.endsWith("_left") || _.endsWith("_right")).filter(_ != "changed_columns")
+    val keyCols = Seq("diff") ++ row.schema.fieldNames.filterNot((name: String) => name.endsWith("_left") || name.endsWith("_right")).filter(_ != "changed_columns")
     val changedCols = row.getAs[Seq[String]]("changed_columns")
 
     val base = keyCols.map(k => k -> row.getAs[Any](k)).toMap
