@@ -26,7 +26,6 @@ def generateDiff(prodDF: DataFrame, devDF: DataFrame, eventType: String): DataFr
 }
 
 
-
 import org.apache.spark.sql.functions._
 import uk.co.gresearch.spark.diff._
 
@@ -40,12 +39,18 @@ def generateDiff(prodDF: DataFrame, devDF: DataFrame, eventType: String): DataFr
 
   val diff = prodDF.diff(devDF, keyCols, compareCols).filter(col("diff") =!= lit("N"))
 
-  val changedColsExprs = compareCols.map { c =>
-    when(col(s"${c}_diff").isNotNull, lit(c)).otherwise(null)
+  val changedColsExprs = compareCols.map { colName =>
+    when(
+      col(s"left_$colName").isNull && col(s"right_$colName").isNotNull ||
+      col(s"left_$colName").isNotNull && col(s"right_$colName").isNull ||
+      col(s"left_$colName") =!= col(s"right_$colName"),
+      lit(colName)
+    ).otherwise(null)
   }
 
-  val withChangedCols = diff.withColumn("changedColumns", expr(s"filter(array(${compareCols.map(c => s"IF(${c}_diff IS NOT NULL, '$c', NULL)").mkString(", ")}), x -> x IS NOT NULL)"))
+  val withChangedCols = diff.withColumn("changedColumns", array_remove(array(changedColsExprs: _*), null))
 
   withChangedCols
 }
+
 
