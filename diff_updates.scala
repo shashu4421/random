@@ -28,7 +28,7 @@ def generateDiff(prodDF: DataFrame, devDF: DataFrame, eventType: String)(implici
   // Step 2: Identify changed columns
   val withChangedCols = diff.withColumn("changed_columns_raw", array(
     allCols.map { c =>
-      when(col(s"${c}_left") =!= col(s"${c}_right"), lit(c))
+      when(col(s"left_$c") =!= col(s"right_$c"), lit(c))
     }: _*
   )).withColumn("changed_columns", expr("filter(changed_columns_raw, x -> x is not null)"))
     .drop("changed_columns_raw")
@@ -38,14 +38,14 @@ def generateDiff(prodDF: DataFrame, devDF: DataFrame, eventType: String)(implici
 
   // Step 4: Create a new DataFrame with only changed columns per row
   val result = changedOnly.map { row =>
-    val keyCols = Seq("diff") ++ row.schema.fieldNames.filterNot((name: String) => name.endsWith("_left") || name.endsWith("_right")).filter(_ != "changed_columns")
+    val keyCols = Seq("diff") ++ row.schema.fieldNames.filterNot(_.startsWith("left_") || _.startsWith("right_")).filter(_ != "changed_columns")
     val changedCols = row.getAs[Seq[String]]("changed_columns")
 
     val base = keyCols.map(k => k -> row.getAs[Any](k)).toMap
     val changed = changedCols.flatMap { c =>
       Seq(
-        s"${c}_left" -> row.getAs[Any](s"${c}_left"),
-        s"${c}_right" -> row.getAs[Any](s"${c}_right")
+        s"left_$c" -> row.getAs[Any](s"left_$c"),
+        s"right_$c" -> row.getAs[Any](s"right_$c")
       )
     }.toMap
 
@@ -56,7 +56,7 @@ def generateDiff(prodDF: DataFrame, devDF: DataFrame, eventType: String)(implici
     RowEncoder(StructType(
       (Seq("diff") ++
         prodDF.columns.filterNot(allCols.contains) ++
-        allCols.flatMap(c => Seq(s"${c}_left", s"${c}_right")) ++
+        allCols.flatMap(c => Seq(s"left_$c", s"right_$c")) ++
         Seq("changed_columns"))
         .distinct
         .map(name => StructField(name, StringType, true)) :+
