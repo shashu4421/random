@@ -53,8 +53,12 @@ def generateDiff(prodDF: DataFrame, devDF: DataFrame, eventType: String): DataFr
   .withColumn("changedColumns", concat_ws(",", col("changedColumns_array")))
   .drop("changedColumns_array")
 
+  val finalDf = withChangedCols.select(
+  col("diff") +: col("changedColumns") +: withChangedCols.columns.filterNot(c => c == "diff" || c == "changedColumns").map(col): _*
+)
 
-  withChangedCols
+  finalDf
+
 }
 
 
