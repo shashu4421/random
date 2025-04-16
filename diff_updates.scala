@@ -48,7 +48,11 @@ def generateDiff(prodDF: DataFrame, devDF: DataFrame, eventType: String): DataFr
     ).otherwise(null)
   }
 
-  val withChangedCols = diff.withColumn("changedColumns", array_remove(array(changedColsExprs: _*), null))
+  val withChangedCols = diff
+  .withColumn("changedColumns_array", array_remove(array(changedColsExprs: _*), null))
+  .withColumn("changedColumns", concat_ws(",", col("changedColumns_array")))
+  .drop("changedColumns_array")
+
 
   withChangedCols
 }
